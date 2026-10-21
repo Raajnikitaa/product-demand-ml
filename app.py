@@ -544,9 +544,9 @@ def fmt_currency(value: float, symbol: str) -> str:
 # 3. Caching Helpers for Performance & Memory Efficiency
 # -----------------------------------------------------------------------------
 @st.cache_resource
-def get_cached_model():
-    """Loads and caches the fitted Scikit-learn pipeline and metadata."""
-    return load_trained_model()
+def get_cached_model(models_dir: str, metadata_mtime_ns: int, metadata_size: int):
+    """Loads and caches the fitted pipeline, invalidating cache when metadata changes."""
+    return load_trained_model(models_dir)
 
 
 @st.cache_data(show_spinner=False)
@@ -759,7 +759,21 @@ def render_main_app():
     stores = get_stores_for_user(user_id)
     
     # Pre-load model
-    pipeline, model_meta = get_cached_model()
+    models_dir = get_default_models_dir()
+    metadata_path = os.path.join(models_dir, "model_metadata.json")
+    try:
+        metadata_stat = os.stat(metadata_path)
+    except FileNotFoundError:
+        metadata_mtime_ns = 0
+        metadata_size = 0
+    else:
+        metadata_mtime_ns = metadata_stat.st_mtime_ns
+        metadata_size = metadata_stat.st_size
+    pipeline, model_meta = get_cached_model(
+        models_dir,
+        metadata_mtime_ns,
+        metadata_size
+    )
 
     # -------------------------------------------------------------------------
     # PAGE 1: OVERVIEW ("Your Store at a Glance")
