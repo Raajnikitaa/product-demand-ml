@@ -620,10 +620,11 @@ def render_auth_view():
     col1, col2, col3 = st.columns([1, 1.4, 1])
     with col2:
         with st.container(border=True):
-            tab_login, tab_signup = st.tabs(["Sign In", "Create New Account"])
+            tab_login = st.container()
+            tab_signup = st.container()
 
-            # TAB 1: SIGN IN
             with tab_login:
+                st.subheader("Sign In")
                 st.markdown("<p style='font-size:13px; color:#4B5563; margin: 4px 0 14px 0;'>Sign in to access your retail stores and demand predictions.</p>", unsafe_allow_html=True)
                 
                 login_user = st.text_input("Username", key="login_username")
@@ -647,8 +648,9 @@ def render_auth_view():
                     else:
                         st.error(msg)
 
-            # TAB 2: SIGN UP
             with tab_signup:
+                st.divider()
+                st.subheader("Create New Account")
                 st.markdown("<p style='font-size:13px; color:#4B5563; margin: 4px 0 14px 0;'>Register a new business account and associate your store workbooks.</p>", unsafe_allow_html=True)
                 su_user = st.text_input("Choose Username", key="su_username")
                 su_email = st.text_input("Email Address", key="su_email")
@@ -688,9 +690,9 @@ def render_auth_view():
                     )
                     if ok:
                         if seed_opt:
-                            st.success(f"{msg} Demonstration stores loaded. You can now switch to Sign In.")
+                            st.success(f"{msg} Demonstration stores loaded. You can now sign in above.")
                         else:
-                            st.success(f"{msg} Your account is ready. Sign in and add your stores in My Stores.")
+                            st.success(f"{msg} Your account is ready. Sign in above and add your stores in My Stores.")
                     else:
                         st.error(msg)
 
