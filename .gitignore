@@ -1,0 +1,25 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+
+# Local data, databases, and trained artifacts (not for public source repository)
+/data/
+/database/
+/models/
+/proj/
+*.xlsx
+*.csv
+*.joblib
+*.zip
+
+# Excel temporary files
+~$*.xlsx
