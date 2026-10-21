@@ -858,7 +858,13 @@ def render_main_app():
                     )
 
                 if preds:
-                    observed_surge_count = sum(1 for p in preds if p['observed_surge'])
+                    observed_fields_available = all(
+                        'observed_surge' in p and 'observed_surge_available' in p
+                        for p in preds
+                    )
+                    observed_surge_count = sum(
+                        1 for p in preds if p.get('observed_surge', False)
+                    )
                     surge_count = sum(1 for p in preds if p['badge_status'] == 'SURGE')
                     watch_count = sum(1 for p in preds if p['badge_status'] == 'WATCH')
                     total_cats = len(preds)
@@ -867,6 +873,11 @@ def render_main_app():
                         st.error(
                             f"⚡ Recent sales surged in {observed_surge_count} of "
                             f"{total_cats} categories (at least 30% above the previous week)."
+                        )
+                    elif not observed_fields_available:
+                        st.warning(
+                            "Recent surge status is unavailable in the loaded prediction code. "
+                            "Restart Streamlit to load the latest updates."
                         )
                     elif all(p['observed_surge_available'] for p in preds):
                         st.success("✅ No 30%+ increase was observed in the latest complete 7-day period.")
@@ -888,12 +899,14 @@ def render_main_app():
                                 f"Latest: {p['feature_values']['sales_today']:.0f} units · "
                                 f"7-day avg: {p['feature_values']['past_7d_avg']:.1f} units/day"
                             )
-                            if p['observed_surge']:
+                            if p.get('observed_surge', False):
                                 status_col.error("⚡ Recent Surge")
                                 item_col.caption(
                                     f"Observed 7-day average: {p['observed_recent_avg']:.1f} units/day "
                                     f"({p['observed_change_pct']:.0f}% above the previous week)."
                                 )
+                            elif not p.get('observed_surge_available', False):
+                                status_col.info("Recent status unavailable")
                             elif p["badge_status"] == "SURGE":
                                 status_col.error("⚡ Forecast Surge")
                             elif p["badge_status"] == "WATCH":
@@ -1438,7 +1451,7 @@ def render_main_app():
 
         if prediction_result.get('success'):
             res = prediction_result
-            if res['observed_surge']:
+            if res.get('observed_surge'):
                 st.error(
                     f"⚡ **Recent sales surge detected:** the latest 7-day average "
                     f"({res['observed_recent_avg']:.1f} units/day) is "
@@ -1446,7 +1459,12 @@ def render_main_app():
                     f"({res['observed_previous_avg']:.1f} units/day), from "
                     f"{res['observed_window_start']} to {res['observed_window_end']}."
                 )
-            elif res['observed_surge_available']:
+            elif 'observed_surge' not in res:
+                st.warning(
+                    "Recent surge status is unavailable in the loaded prediction code. "
+                    "Restart Streamlit to load the latest updates."
+                )
+            elif res.get('observed_surge_available'):
                 st.success(
                     "No 30%+ increase was observed in the latest complete 7-day period."
                 )
