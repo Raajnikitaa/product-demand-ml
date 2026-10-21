@@ -4,7 +4,7 @@ DemandWise is a complete, beginner-friendly retail demand surge prediction web a
 
 The system helps retail shopkeepers anticipate which product categories are likely to experience an exceptional demand spike over the upcoming 7 days, allowing them to prepare buffer stock and avoid costly stockouts.
 
-> **Public repository contents:** This repository publishes source code, tests, and dependency instructions only. Local datasets, uploads, SQLite databases, and trained model artifacts are intentionally excluded. The app can be launched from source, but demo stores and pre-trained predictions require locally supplied data and model files (or a model trained from local data). GitHub hosts this code; it does not run the Streamlit application.
+> **Public repository contents:** This repository publishes source code, tests, dependency instructions, and a pre-trained model pipeline with its metadata. The model was trained on the synthetic demonstration workbooks described below; those workbooks, user uploads, and SQLite databases are not included. The app can use the published model to score data supplied by a user, but bundled demo stores are unavailable unless their workbooks are provided separately. GitHub hosts this code; Streamlit Community Cloud runs the live application.
 
 ---
 
