@@ -12,6 +12,11 @@ class MismatchedFeaturePipeline:
     feature_names_in_ = np.array(['unexpected_feature'])
 
 
+class NormalForecastPipeline:
+    def predict_proba(self, features):
+        return np.array([[0.9, 0.1]])
+
+
 class TestPredictionCompatibility(unittest.TestCase):
 
     def setUp(self):
@@ -70,6 +75,44 @@ class TestPredictionCompatibility(unittest.TestCase):
 
         self.assertFalse(result['success'])
         self.assertIn('validated decision threshold', result['error'])
+
+    def test_reports_observed_surge_even_when_model_forecast_is_normal(self):
+        history = self.history.copy()
+        history.loc[history.index[-7:], 'sales'] = 17.0
+
+        result = predict_category_surge(
+            history,
+            'Test Store',
+            'Bakery',
+            pipeline=NormalForecastPipeline(),
+            metadata={'optimal_decision_threshold': 0.5},
+        )
+
+        self.assertTrue(result['success'])
+        self.assertFalse(result['is_surge'])
+        self.assertTrue(result['observed_surge'])
+        self.assertTrue(result['observed_surge_available'])
+        self.assertAlmostEqual(result['observed_previous_avg'], 10.0)
+        self.assertAlmostEqual(result['observed_recent_avg'], 17.0)
+        self.assertAlmostEqual(result['observed_change_pct'], 70.0)
+        self.assertEqual(result['observed_window_start'], '2025-02-03')
+        self.assertEqual(result['observed_window_end'], '2025-02-09')
+
+    def test_does_not_report_observed_surge_without_fourteen_consecutive_days(self):
+        history = self.history.drop(index=self.history.index[-8])
+
+        result = predict_category_surge(
+            history,
+            'Test Store',
+            'Bakery',
+            pipeline=NormalForecastPipeline(),
+            metadata={'optimal_decision_threshold': 0.5},
+        )
+
+        self.assertTrue(result['success'])
+        self.assertFalse(result['observed_surge_available'])
+        self.assertFalse(result['observed_surge'])
+        self.assertIsNone(result['observed_change_pct'])
 
 
 if __name__ == '__main__':

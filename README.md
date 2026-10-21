@@ -59,6 +59,7 @@ $$\text{Surge}_t = 1 \iff \overline{\text{Sales}}_{[t+1, t+7]} \ge 1.30 \times \
 - **30% Threshold:** A configurable business rule used to label a surge; it is not a claim about typical retail fluctuations.
 - **Positive Baseline:** A target is assigned only when the preceding 7-day baseline is positive.
 - **Incomplete Windows:** Rows without all seven baseline days or all seven future days are assigned `target = NaN` and excluded from training.
+- **Observed vs. Forecast Surge:** The dashboard separately flags an observed surge when the latest complete 7-day sales average is at least 30% above the previous 7 days. The model's surge badge remains a distinct forecast for the next 7 days, so a normal forecast does not hide a surge already present in the data.
 
 ---
 

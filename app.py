@@ -858,20 +858,27 @@ def render_main_app():
                     )
 
                 if preds:
+                    observed_surge_count = sum(1 for p in preds if p['observed_surge'])
                     surge_count = sum(1 for p in preds if p['badge_status'] == 'SURGE')
                     watch_count = sum(1 for p in preds if p['badge_status'] == 'WATCH')
                     total_cats = len(preds)
 
-                    if surge_count > 0:
+                    if observed_surge_count > 0:
                         st.error(
-                            f"⚡ {surge_count} of {total_cats} categories flagged for potential demand surge."
+                            f"⚡ Recent sales surged in {observed_surge_count} of "
+                            f"{total_cats} categories (at least 30% above the previous week)."
                         )
+                    elif all(p['observed_surge_available'] for p in preds):
+                        st.success("✅ No 30%+ increase was observed in the latest complete 7-day period.")
+                    else:
+                        st.info("Recent surge status is unavailable until 14 consecutive days of data are present.")
+
+                    if surge_count > 0:
+                        st.error(f"Next-week model forecast: potential surge in {surge_count} categories.")
                     elif watch_count > 0:
                         st.warning(
-                            f"👁️ {watch_count} of {total_cats} categories near the surge threshold — monitor closely."
+                            f"Next-week model forecast: {watch_count} categories are near the surge threshold — monitor closely."
                         )
-                    else:
-                        st.success(f"✅ All {total_cats} categories show normal demand.")
 
                     for p in preds:
                         with st.container(border=True):
@@ -881,14 +888,22 @@ def render_main_app():
                                 f"Latest: {p['feature_values']['sales_today']:.0f} units · "
                                 f"7-day avg: {p['feature_values']['past_7d_avg']:.1f} units/day"
                             )
-                            if p["badge_status"] == "SURGE":
-                                status_col.error("⚡ High Demand")
-                                st.caption("Review recent sales and consider checking stock before the forecast period.")
+                            if p['observed_surge']:
+                                status_col.error("⚡ Recent Surge")
+                                item_col.caption(
+                                    f"Observed 7-day average: {p['observed_recent_avg']:.1f} units/day "
+                                    f"({p['observed_change_pct']:.0f}% above the previous week)."
+                                )
+                            elif p["badge_status"] == "SURGE":
+                                status_col.error("⚡ Forecast Surge")
                             elif p["badge_status"] == "WATCH":
-                                status_col.warning("👁️ Monitor")
-                                st.caption("Demand is near the threshold. Check again in 1–2 days.")
+                                status_col.warning("👁️ Forecast: Monitor")
                             else:
-                                status_col.success("✓ Normal")
+                                status_col.success("✓ No Recent Surge")
+                            st.caption(
+                                f"Next 7-day model forecast: {p['status_label']} "
+                                f"({p['probability_pct']:.1f}% score)."
+                            )
                 else:
                     st.info("Not enough sales history yet for demand predictions.")
             elif dataset_error:
@@ -1423,6 +1438,23 @@ def render_main_app():
 
         if prediction_result.get('success'):
             res = prediction_result
+            if res['observed_surge']:
+                st.error(
+                    f"⚡ **Recent sales surge detected:** the latest 7-day average "
+                    f"({res['observed_recent_avg']:.1f} units/day) is "
+                    f"{res['observed_change_pct']:.0f}% above the previous 7 days "
+                    f"({res['observed_previous_avg']:.1f} units/day), from "
+                    f"{res['observed_window_start']} to {res['observed_window_end']}."
+                )
+            elif res['observed_surge_available']:
+                st.success(
+                    "No 30%+ increase was observed in the latest complete 7-day period."
+                )
+            else:
+                st.info(
+                    "Recent surge status is unavailable because the dataset does not contain "
+                    "14 consecutive days of sales."
+                )
             
             # Prominent Result Card
             badge_class = f"badge-{res['badge_status'].lower()}"
@@ -1441,7 +1473,7 @@ def render_main_app():
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
                     <div>
                         <div style="font-size: 13px; font-weight: 600; color: #6B7280; text-transform: uppercase;">
-                            Prediction Result &bull; {res['store_name']}
+                            Next 7-Day Model Forecast &bull; {res['store_name']}
                         </div>
                         <h2 style="margin: 4px 0 8px 0; font-size: 26px; color: #111827;">{res['category']}</h2>
                         <span class="{badge_class}" style="font-size: 15px; padding: 6px 16px;">

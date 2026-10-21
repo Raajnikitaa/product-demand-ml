@@ -16,6 +16,51 @@ from src.train_model import load_trained_model
 from src.recommendations import generate_recommendation_and_explanation
 
 
+def _get_recent_observed_surge(sub_df: pd.DataFrame) -> Dict[str, Any]:
+    """Compare the latest complete 7-day sales window with the preceding 7 days."""
+    daily_sales = (
+        sub_df.assign(date=pd.to_datetime(sub_df['date']).dt.normalize())
+        .groupby('date')['sales']
+        .sum()
+        .sort_index()
+    )
+    recent = daily_sales.tail(14)
+    has_consecutive_days = (
+        recent.index.to_series().diff().dropna() == pd.Timedelta(days=1)
+    ).all()
+    if len(recent) < 14 or not has_consecutive_days:
+        return {
+            'observed_surge_available': False,
+            'observed_surge': False,
+            'observed_recent_avg': None,
+            'observed_previous_avg': None,
+            'observed_change_pct': None,
+            'observed_window_start': None,
+            'observed_window_end': None,
+        }
+
+    previous_avg = float(recent.iloc[:7].mean())
+    recent_avg = float(recent.iloc[7:].mean())
+    change_pct = (
+        ((recent_avg / previous_avg) - 1.0) * 100.0
+        if previous_avg > 0
+        else None
+    )
+    return {
+        'observed_surge_available': True,
+        'observed_surge': bool(
+            previous_avg > 0
+            and recent_avg >= 1.30 * previous_avg
+            and recent_avg > previous_avg
+        ),
+        'observed_recent_avg': recent_avg,
+        'observed_previous_avg': previous_avg,
+        'observed_change_pct': change_pct,
+        'observed_window_start': recent.index[7].strftime('%Y-%m-%d'),
+        'observed_window_end': recent.index[-1].strftime('%Y-%m-%d'),
+    }
+
+
 def predict_category_surge(
     store_df: pd.DataFrame,
     store_name: str,
@@ -137,6 +182,7 @@ def predict_category_surge(
         'forecast_horizon_label': f"{forecast_start.strftime('%b %d, %Y')} – {forecast_end.strftime('%b %d, %Y')} (Next 7 Days)",
         'feature_values': feature_values
     }
+    base_result.update(_get_recent_observed_surge(sub_df))
     
     # Add textual explanation & advisory
     recs = generate_recommendation_and_explanation(base_result)
