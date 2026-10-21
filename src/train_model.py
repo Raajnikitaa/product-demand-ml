@@ -54,7 +54,10 @@ def get_default_models_dir() -> str:
         os.path.abspath(os.path.join('..', 'models'))
     ]
     for c in candidates:
-        if os.path.exists(os.path.join(c, 'model_pipeline.joblib')):
+        if (
+            os.path.exists(os.path.join(c, 'model_metadata.json'))
+            or os.path.exists(os.path.join(c, 'model_pipeline.joblib'))
+        ):
             return c
     return candidates[0]
 

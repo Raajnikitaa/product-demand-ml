@@ -8,12 +8,14 @@ and inference prediction schemas.
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 import pandas as pd
 import numpy as np
 
 from src.auth import hash_password, verify_password, register_user, authenticate_user
 from src.database import init_db, get_connection, add_store, get_stores_for_user
 from src.train_model import load_trained_model
+import src.train_model as train_model_module
 from src.predict_demand import predict_category_surge
 
 
@@ -108,6 +110,34 @@ class TestModelWorkflow(unittest.TestCase):
         self.assertIn('is_surge', pred)
         self.assertIn('advisory', pred)
         self.assertIn('forecast_horizon_label', pred)
+
+    def test_model_directory_finds_versioned_artifact_outside_working_directory(self):
+        original_cwd = os.getcwd()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = os.path.join(temp_dir, 'repository')
+            models_dir = os.path.join(repository, 'models')
+            runtime_dir = os.path.join(temp_dir, 'runtime')
+            os.makedirs(os.path.join(repository, 'src'))
+            os.makedirs(models_dir)
+            os.makedirs(runtime_dir)
+            with open(os.path.join(models_dir, 'model_metadata.json'), 'w', encoding='utf-8') as file:
+                file.write('{}')
+            with open(os.path.join(models_dir, 'model_pipeline_versioned.joblib'), 'wb') as file:
+                file.write(b'model')
+
+            try:
+                os.chdir(runtime_dir)
+                with patch.object(
+                    train_model_module,
+                    '__file__',
+                    os.path.join(repository, 'src', 'train_model.py')
+                ):
+                    self.assertEqual(
+                        train_model_module.get_default_models_dir(),
+                        models_dir
+                    )
+            finally:
+                os.chdir(original_cwd)
 
 
 if __name__ == '__main__':
